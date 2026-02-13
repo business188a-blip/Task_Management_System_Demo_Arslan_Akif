@@ -174,3 +174,24 @@ Option B (Vercel + Render):
 - README with setup + API documentation
 - Dashboard screenshots
 - Video walkthrough
+
+## Submission Artifacts
+
+### Live Project URL
+
+- https://task-manager.onrender.com
+
+### Dashboard Screenshots
+
+- Add dashboard screenshots in `task-manager/docs/screenshots/`
+- Suggested file names:
+  - `dashboard-overview.png`
+  - `dashboard-trends-weekly.png`
+  - `dashboard-trends-monthly.png`
+  - `dashboard-mobile.png`
+
+### Video Walkthrough
+
+- Add walkthrough video link below:
+  - `PASTE_VIDEO_LINK_HERE`
+- Optional: keep notes/scripts in `task-manager/docs/walkthrough/README.md`
