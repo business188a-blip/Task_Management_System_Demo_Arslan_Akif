@@ -3,6 +3,7 @@ export default function TaskForm({
   handleChange,
   handleSubmit,
   editingId,
+  handleFileChange,
 }) {
   return (
     <form onSubmit={handleSubmit} className="space-y-3 mb-6">
@@ -11,7 +12,8 @@ export default function TaskForm({
         placeholder="Task title"
         value={formData.title}
         onChange={handleChange}
-        className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="input"
+        required
       />
 
       <textarea
@@ -19,15 +21,15 @@ export default function TaskForm({
         placeholder="Task description"
         value={formData.description}
         onChange={handleChange}
-        className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="textarea"
       />
 
-      <div className="flex gap-3">
+      <div className="flex flex-wrap gap-3">
         <select
           name="status"
           value={formData.status}
           onChange={handleChange}
-          className="border rounded px-3 py-2 w-full"
+          className="select"
         >
           <option>Pending</option>
           <option>In Progress</option>
@@ -39,13 +41,24 @@ export default function TaskForm({
           name="dueDate"
           value={formData.dueDate}
           onChange={handleChange}
-          className="border rounded px-3 py-2 w-full"
+          className="input"
         />
       </div>
 
+      <input
+        type="file"
+        onChange={(e) => handleFileChange(e.target.files?.[0] || null)}
+        className="w-full text-sm muted"
+      />
+      {formData.attachmentName && (
+        <p className="text-xs muted">
+          Selected: {formData.attachmentName}
+        </p>
+      )}
+
       <button
         type="submit"
-        className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition"
+        className="w-full btn btn-primary"
       >
         {editingId ? "Update Task" : "Add Task"}
       </button>

@@ -1,119 +1,176 @@
-Task Manager API 🚀
+# Task Management System
 
-A Node.js, Express, and MongoDB based Task Management System that allows authenticated users to create, view, update, and delete tasks. The backend is integrated with a frontend application and supports basic task management functionality.
+Full-stack task manager with collaboration, real-time notifications, analytics, dark mode, and attachments.
 
-Implemented Features
+## Implemented Features
 
-User registration and login using JWT authentication
+- Authentication
+  - `POST /api/auth/register`
+  - `POST /api/auth/login`
+  - JWT-protected task, analytics, and notification routes
 
-Secure password hashing using bcrypt
+- Collaborative tasks
+  - Tasks have `owner` and `sharedWith`
+  - Owner can share task with another user: `PUT /api/tasks/:id/share`
+  - Shared-user task feed: `GET /api/tasks/shared`
 
-Create, read, update, and delete tasks
+- Real-time notifications (Socket.IO)
+  - Share notification when task is shared
+  - Status notification when task status changes
+  - Persistent notification history in MongoDB
 
-Tasks are associated with authenticated users
+- Analytics dashboard
+  - `GET /api/analytics/overview`
+  - `GET /api/analytics/trends?range=weekly|monthly`
+  - Status breakdown pie chart + completed vs overdue trend chart
 
-Input validation using Joi
+- Final enhancements
+  - Dark mode toggle
+  - Attachments support (base64 upload, stored under `/uploads`)
+  - Mobile-responsive UI
 
-RESTful API endpoints
+## Tech Stack
 
-Frontend and backend integration
+- Backend: Node.js, Express, MongoDB, Mongoose, JWT, Socket.IO
+- Frontend: React, Tailwind CSS, Axios, Recharts, Socket.IO Client
 
-Tech Stack
-Backend
+## Project Structure
 
-Node.js
+- `task-manager/backend`
+- `task-manager/frontend`
 
-Express.js
+## Environment Variables
 
-MongoDB (MongoDB Atlas)
+Backend `.env` (inside `task-manager/backend`):
 
-Mongoose
-
-JWT (JSON Web Tokens)
-
-Joi
-
-bcrypt
-
-Frontend
-
-React.js
-
-Axios
-
-CSS (framework or custom, as implemented)
-
-Project Setup
-1. Clone the Repository
-git clone https://github.com/yourusername/task-manager.git
-cd task-manager
-
-2. Backend Setup
-cd backend
-npm install
-
-
-Create a .env file:
-
-PORT=5000
+```env
 MONGO_URI=your_mongodb_connection_string
-JWT_SECRET=your_jwt_secret
+JWT_SECRET=your_secret
+PORT=4000
+FRONTEND_URL=http://localhost:5173
+```
 
+Frontend `.env` (inside `task-manager/frontend`, optional):
 
-Start the backend server:
+```env
+VITE_API_URL=http://localhost:4000/api
+```
 
-npm run dev
+## Local Setup
 
-3. Frontend Setup
-cd frontend
+1. Backend
+
+```bash
+cd task-manager/backend
 npm install
 npm run dev
+```
 
+2. Frontend
 
-The frontend application will open in the browser and communicate with the backend API.
+```bash
+cd task-manager/frontend
+npm install
+npm run dev
+```
 
-API Endpoints
-Authentication
+Frontend runs on `http://localhost:5173` and backend on `http://localhost:4000` by default.
 
-POST /api/auth/register – Register a new user
+## API Reference
 
-POST /api/auth/login – Login an existing user
+### Auth
 
-Tasks (Protected Routes)
+- `POST /api/auth/register`
+  - Body:
 
-POST /api/tasks – Create a new task
+```json
+{
+  "name": "Ali",
+  "email": "ali@example.com",
+  "password": "123456"
+}
+```
 
-GET /api/tasks – Get all tasks for the logged-in user
+- `POST /api/auth/login`
+  - Body:
 
-GET /api/tasks/:id – Get a single task
+```json
+{
+  "email": "ali@example.com",
+  "password": "123456"
+}
+```
 
-PUT /api/tasks/:id – Update a task
+### Tasks
 
-DELETE /api/tasks/:id – Delete a task
+- `GET /api/tasks` (owned + shared)
+- `GET /api/tasks/shared`
+- `GET /api/tasks/:id`
+- `POST /api/tasks`
+- `PUT /api/tasks/:id`
+- `DELETE /api/tasks/:id` (owner only)
+- `PUT /api/tasks/:id/share` (owner only)
 
-Demonstration
+Example create/update payload with attachment:
 
-A recorded video demonstrates:
+```json
+{
+  "title": "Prepare sprint demo",
+  "description": "Slides and test run",
+  "status": "In Progress",
+  "dueDate": "2026-02-14",
+  "attachment": {
+    "fileName": "demo-plan.pdf",
+    "fileType": "application/pdf",
+    "size": 15230,
+    "contentBase64": "..."
+  }
+}
+```
 
-Running the application using npm run dev
+### Notifications
 
-Frontend loading in the browser
+- `GET /api/notifications`
+- `PUT /api/notifications/:id/read`
+- `PUT /api/notifications/read-all`
 
-Creating a task
+### Analytics
 
-Updating a task
+- `GET /api/analytics/overview`
+- `GET /api/analytics/trends?range=weekly`
+- `GET /api/analytics/trends?range=monthly`
 
-Deleting a task
+## Deployment (Single Live URL)
 
-Notes
+Recommended: Render (backend + static frontend in one service) or Render backend + Vercel frontend.
 
-Authentication is required to access task routes.
+Option A (single service on Render):
 
-Each user can only access their own tasks.
+1. Build frontend: `npm run build` inside `task-manager/frontend`
+2. Serve frontend build from backend (optional extension step)
+3. Deploy backend service and expose `/api/*` and static frontend route from same host
 
-This project focuses on core task management functionality.
+Option B (Vercel + Render):
 
-Author
+1. Deploy backend on Render
+2. Deploy frontend on Vercel
+3. Set `VITE_API_URL` to backend URL + `/api`
+4. Set backend `FRONTEND_URL` to Vercel domain
 
-Arslan Akif Mehmood
-BSCS – Software Development Intern
+## End-to-End Checklist
+
+- Register two users
+- User A creates task and shares with User B
+- User B receives real-time share notification
+- User B updates task status
+- User A receives real-time status notification
+- Analytics dashboard updates with status/trends
+- Dark mode and attachments verified on desktop/mobile
+
+## Submission Checklist
+
+- GitHub repository updated
+- Live project URL
+- README with setup + API documentation
+- Dashboard screenshots
+- Video walkthrough

@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: task-manager
+    env: node
+    rootDir: task-manager/backend
+    buildCommand: |
+      cd ../frontend && npm install && npm run build
+      cd ../backend && npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: FRONTEND_URL
+        value: https://task-manager.onrender.com
+      - key: JWT_SECRET
+        sync: false
+      - key: MONGO_URI
+        sync: false

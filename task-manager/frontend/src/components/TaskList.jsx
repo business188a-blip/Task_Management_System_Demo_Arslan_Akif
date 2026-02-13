@@ -1,229 +1,290 @@
-import { useEffect, useState } from "react";
-import axios from "axios";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { io } from "socket.io-client";
 import toast from "react-hot-toast";
 import TaskForm from "./TaskForm";
 import TaskItem from "./TaskItem";
+import Notifications from "./Notifications";
+import {
+  apiMeta,
+  createTask,
+  deleteTask,
+  getNotifications,
+  getTasks,
+  readAllNotifications,
+  readNotification,
+  shareTask,
+  updateTask,
+} from "../api";
 
+const decodeUserId = (token) => {
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    return payload.id;
+  } catch {
+    return null;
+  }
+};
 
-export default function TaskList() {
+const toAttachmentPayload = (file) =>
+  new Promise((resolve, reject) => {
+    if (!file) {
+      resolve(null);
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = String(reader.result || "");
+      const base64 = result.split(",")[1];
+      resolve({
+        fileName: file.name,
+        fileType: file.type,
+        size: file.size,
+        contentBase64: base64,
+      });
+    };
+    reader.onerror = () => reject(new Error("Unable to read attachment"));
+    reader.readAsDataURL(file);
+  });
+
+export default function TaskList({ token }) {
+  const currentUserId = useMemo(() => decodeUserId(token), [token]);
   const [tasks, setTasks] = useState([]);
+  const [notifications, setNotifications] = useState([]);
+  const [showNotifications, setShowNotifications] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
     description: "",
     status: "Pending",
     dueDate: "",
+    attachmentName: "",
   });
+  const [selectedFile, setSelectedFile] = useState(null);
   const [editingId, setEditingId] = useState(null);
-
-  // UI controls
-  const [filter, setFilter] = useState("");
-  const [sortBy, setSortBy] = useState("");
   const [search, setSearch] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const tasksPerPage = 5;
+  const [filter, setFilter] = useState("");
+
+  const fetchTasks = useCallback(async () => {
+    try {
+      const data = await getTasks(token);
+      setTasks(data);
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to load tasks");
+    }
+  }, [token]);
+
+  const fetchNotifications = useCallback(async () => {
+    try {
+      const data = await getNotifications(token);
+      setNotifications(data);
+    } catch {
+      toast.error("Failed to load notifications");
+    }
+  }, [token]);
 
   useEffect(() => {
     fetchTasks();
-  }, []);
+    fetchNotifications();
+  }, [fetchNotifications, fetchTasks]);
 
-  const fetchTasks = () => {
-    axios
-      .get("http://localhost:5000/api/tasks")
-      .then((res) => setTasks(res.data))
-      .catch(() => toast.error("Error fetching tasks"));
+  useEffect(() => {
+    if (!currentUserId) return;
+    const socket = io(apiMeta.API_ORIGIN);
+    socket.emit("join", { userId: currentUserId });
+    socket.on("notification", (n) => {
+      setNotifications((prev) => [{ ...n, read: false, createdAt: new Date().toISOString() }, ...prev]);
+      setShowNotifications(true);
+      toast.success(n.message || "New notification");
+    });
+    return () => socket.disconnect();
+  }, [currentUserId]);
+
+  const resetForm = () => {
+    setFormData({
+      title: "",
+      description: "",
+      status: "Pending",
+      dueDate: "",
+      attachmentName: "",
+    });
+    setSelectedFile(null);
+    setEditingId(null);
   };
 
-  const handleChange = (e) => {
-    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
-  };
+  const handleSubmit = async (event) => {
+    event.preventDefault();
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
+    try {
+      const payload = {
+        title: formData.title,
+        description: formData.description,
+        status: formData.status,
+        dueDate: formData.dueDate || null,
+      };
 
-    // Validation
-    if (!formData.title.trim()) {
-      toast.error("Title is required");
-      return;
+      const attachment = await toAttachmentPayload(selectedFile);
+      if (attachment) payload.attachment = attachment;
+
+      if (editingId) {
+        await updateTask(editingId, payload, token);
+        toast.success("Task updated");
+      } else {
+        await createTask(payload, token);
+        toast.success("Task created");
+      }
+
+      await fetchTasks();
+      resetForm();
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to save task");
     }
-    if (formData.description && formData.description.length < 5) {
-      toast.error("Description must be at least 5 characters");
-      return;
-    }
-
-    const url = editingId
-      ? `http://localhost:5000/api/tasks/${editingId}`
-      : "http://localhost:5000/api/tasks";
-    const method = editingId ? "put" : "post";
-
-    axios[method](url, formData)
-      .then(() => {
-        fetchTasks();
-        setFormData({
-          title: "",
-          description: "",
-          status: "Pending",
-          dueDate: "",
-        });
-        setEditingId(null);
-        toast.success(editingId ? "Task updated!" : "Task added!");
-        setCurrentPage(1); // reset to first page after change
-      })
-      .catch(() => toast.error("Error saving task"));
   };
 
   const handleEdit = (task) => {
+    setEditingId(task._id);
     setFormData({
-      title: task.title,
+      title: task.title || "",
       description: task.description || "",
       status: task.status || "Pending",
       dueDate: task.dueDate ? task.dueDate.slice(0, 10) : "",
+      attachmentName: "",
     });
-    setEditingId(task._id);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    setSelectedFile(null);
   };
 
-  const handleDelete = (id) => {
-    if (!window.confirm("Are you sure you want to delete this task?")) return;
-    axios
-      .delete(`http://localhost:5000/api/tasks/${id}`)
-      .then(() => {
-        fetchTasks();
-        toast.success("Task deleted!");
-      })
-      .catch(() => toast.error("Error deleting task"));
+  const handleDelete = async (taskId) => {
+    try {
+      await deleteTask(taskId, token);
+      toast.success("Task deleted");
+      fetchTasks();
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Delete failed");
+    }
   };
 
-  // Combine filters, search, sort
-  const displayedTasks = tasks
+  const handleShare = async (task) => {
+    const userId = window.prompt("Enter recipient user ID");
+    if (!userId) return;
+
+    try {
+      const data = await shareTask(task._id, userId.trim(), token);
+      toast.success(data.message || "Task shared");
+      fetchTasks();
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Share failed");
+    }
+  };
+
+  const handleStatusChange = async (taskId, status) => {
+    try {
+      await updateTask(taskId, { status }, token);
+      fetchTasks();
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Status update failed");
+    }
+  };
+
+  const markOneRead = async (id) => {
+    try {
+      await readNotification(id, token);
+      setNotifications((prev) => prev.map((n) => (n._id === id ? { ...n, read: true } : n)));
+    } catch {
+      toast.error("Failed to mark read");
+    }
+  };
+
+  const markAllRead = async () => {
+    try {
+      await readAllNotifications(token);
+      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    } catch {
+      toast.error("Failed to mark all read");
+    }
+  };
+
+  const filteredTasks = tasks
     .filter((task) => (filter ? task.status === filter : true))
     .filter((task) => {
       const q = search.trim().toLowerCase();
       if (!q) return true;
-      const title = (task.title || "").toLowerCase();
-      const desc = (task.description || "").toLowerCase();
-      return title.includes(q) || desc.includes(q);
-    })
-    .sort((a, b) => {
-      if (sortBy === "dueDate") {
-        const da = a.dueDate ? new Date(a.dueDate).getTime() : Infinity;
-        const db = b.dueDate ? new Date(b.dueDate).getTime() : Infinity;
-        return da - db;
-      }
-      return 0;
+      return `${task.title || ""} ${task.description || ""}`.toLowerCase().includes(q);
     });
 
-  // Pagination
-  const totalPages = Math.ceil(displayedTasks.length / tasksPerPage) || 1;
-  const safePage = Math.min(currentPage, totalPages);
-  const indexOfLastTask = safePage * tasksPerPage;
-  const indexOfFirstTask = indexOfLastTask - tasksPerPage;
-  const currentTasks = displayedTasks.slice(indexOfFirstTask, indexOfLastTask);
+  const unreadCount = notifications.filter((n) => !n.read).length;
 
   return (
-   <div className="min-h-screen bg-gray-100 flex items-start justify-center py-10">
-  <div className="bg-white p-6 rounded-lg shadow-md w-full max-w-2xl">
+    <div className="grid lg:grid-cols-[2fr_1fr] gap-6">
+      <section className="card p-4 sm:p-6">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
+          <div>
+            <p className="kicker">Tasks</p>
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white">Your workload</h2>
+          </div>
+          <button
+            onClick={() => setShowNotifications((prev) => !prev)}
+            className="btn btn-ghost text-sm"
+          >
+            Notifications ({unreadCount})
+          </button>
+        </div>
 
-      <h2 className="text-2xl font-bold mb-4">
-        {editingId ? "Edit Task" : "Create Task"}
-      </h2>
-
-      {/* Task Form */}
-      <TaskForm
-        formData={formData}
-        handleChange={handleChange}
-        handleSubmit={handleSubmit}
-        editingId={editingId}
-      />
-
-      {/* Search, Filter, Sort */}
-      <div className="flex flex-col gap-3 mb-4">
-        <input
-          type="text"
-          placeholder="Search tasks..."
-          value={search}
-          onChange={(e) => {
-            setSearch(e.target.value);
-            setCurrentPage(1);
+        <TaskForm
+          formData={formData}
+          editingId={editingId}
+          handleChange={(e) => setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }))}
+          handleFileChange={(file) => {
+            setSelectedFile(file);
+            setFormData((prev) => ({ ...prev, attachmentName: file?.name || "" }));
           }}
-          className="border p-2 rounded w-full"
+          handleSubmit={handleSubmit}
         />
 
-        <div className="flex gap-3">
+        <div className="grid sm:grid-cols-2 gap-3 mb-4">
+          <input
+            type="text"
+            placeholder="Search tasks"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="input"
+          />
           <select
             value={filter}
-            onChange={(e) => {
-              setFilter(e.target.value);
-              setCurrentPage(1);
-            }}
-            className="border p-2 rounded"
+            onChange={(e) => setFilter(e.target.value)}
+            className="select"
           >
-            <option value="">All</option>
+            <option value="">All statuses</option>
             <option value="Pending">Pending</option>
             <option value="In Progress">In Progress</option>
             <option value="Completed">Completed</option>
           </select>
-
-          <button
-            onClick={() => setSortBy(sortBy === "dueDate" ? "" : "dueDate")}
-            className="bg-gray-600 text-white px-3 py-1 rounded"
-          >
-            {sortBy === "dueDate" ? "Clear Sort" : "Sort by Due Date"}
-          </button>
         </div>
-      </div>
 
-      {/* Task List */}
-      <h2 className="text-xl font-bold mb-2">Tasks</h2>
-      {currentTasks.length === 0 ? (
-        <p className="text-gray-600">No tasks found.</p>
-      ) : (
-        <ul className="space-y-2">
-          {currentTasks.map((task) => (
-            <TaskItem
-              key={task._id}
-              task={task}
-              handleEdit={handleEdit}
-              handleDelete={handleDelete}
-            />
-          ))}
-        </ul>
-      )}
+        {filteredTasks.length === 0 ? (
+          <p className="muted">No tasks found.</p>
+        ) : (
+          <ul className="space-y-2">
+            {filteredTasks.map((task) => (
+              <TaskItem
+                key={task._id}
+                task={task}
+                currentUserId={currentUserId}
+                apiOrigin={apiMeta.API_ORIGIN}
+                handleEdit={handleEdit}
+                handleDelete={handleDelete}
+                handleShare={handleShare}
+                handleStatusChange={handleStatusChange}
+              />
+            ))}
+          </ul>
+        )}
+      </section>
 
-      {/* Pagination */}
-      <div className="flex items-center gap-2 mt-4">
-        <button
-          onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-          disabled={safePage === 1}
-          className={`px-3 py-1 rounded ${
-            safePage === 1 ? "bg-gray-200 text-gray-500" : "bg-gray-600 text-white"
-          }`}
-        >
-          Prev
-        </button>
-
-        {Array.from({ length: totalPages }, (_, i) => (
-          <button
-            key={i}
-            onClick={() => setCurrentPage(i + 1)}
-            className={`px-3 py-1 rounded ${
-              safePage === i + 1 ? "bg-blue-600 text-white" : "bg-gray-200"
-            }`}
-          >
-            {i + 1}
-          </button>
-        ))}
-
-        <button
-          onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-          disabled={safePage === totalPages}
-          className={`px-3 py-1 rounded ${
-            safePage === totalPages ? "bg-gray-200 text-gray-500" : "bg-gray-600 text-white"
-          }`}
-        >
-          Next
-        </button>
-      </div>
+      <Notifications
+        open={showNotifications}
+        notifications={notifications}
+        onClose={() => setShowNotifications(false)}
+        onMarkOneRead={markOneRead}
+        onMarkAllRead={markAllRead}
+      />
     </div>
-  </div>
-);
+  );
 }
