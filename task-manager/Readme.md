@@ -1,56 +1,145 @@
-# Task Management System
+# Task Management System (MERN) - Enhanced Phase (Weeks 4-6)
 
-Full-stack task manager with collaboration, real-time notifications, analytics, dark mode, and attachments.
+Project phase covers collaboration, analytics, deployment readiness, and final polishing.
 
-## Implemented Features
+- Duration: Weeks 4-6
+- Final submission date: February 15, 2026 (11:59 PM PKT)
 
-- Authentication
-  - `POST /api/auth/register`
-  - `POST /api/auth/login`
-  - JWT-protected task, analytics, and notification routes
+## Overview
 
-- Collaborative tasks
-  - Tasks have `owner` and `sharedWith`
-  - Owner can share task with another user: `PUT /api/tasks/:id/share`
-  - Shared-user task feed: `GET /api/tasks/shared`
+This application supports multi-user task management with real-time notifications, analytics insights, and production-ready deployment flow.
 
-- Real-time notifications (Socket.IO)
-  - Share notification when task is shared
-  - Status notification when task status changes
-  - Persistent notification history in MongoDB
+Core features:
+- JWT authentication and protected APIs
+- Task CRUD with collaboration (`owner` + `sharedWith`)
+- Real-time and persisted notifications
+- Analytics dashboard with weekly/monthly trends
+- Dark mode, attachments, and responsive layout
 
-- Analytics dashboard
-  - `GET /api/analytics/overview`
-  - `GET /api/analytics/trends?range=weekly|monthly`
-  - Status breakdown pie chart + completed vs overdue trend chart
+## Requirement Mapping (Your Weekly Plan)
 
-- Final enhancements
-  - Dark mode toggle
-  - Attachments support (base64 upload, stored under `/uploads`)
-  - Mobile-responsive UI
+### Week 4 - Collaborative Features & Real-Time Notifications
+
+1. User collaboration
+- Database schema includes `owner` and `sharedWith` in `backend/models/taskModel.js`
+- Implemented endpoints:
+- `PUT /api/tasks/:id/share` (share with another user)
+- `GET /api/tasks/shared` (retrieve tasks shared with current user)
+
+2. Real-time notifications
+- Socket.IO implemented in `backend/server.js` and `frontend/src/components/TaskList.jsx`
+- Notifications are triggered when:
+- a task is shared
+- a task status changes
+- Past notifications endpoint:
+- `GET /api/notifications`
+
+3. Frontend integration
+- Share flow implemented from task item actions (`frontend/src/components/TaskItem.jsx` and `frontend/src/components/TaskList.jsx`)
+- Notifications shown in sidebar/panel (`frontend/src/components/Notifications.jsx`)
+
+4. Testing & error handling (functional safeguards)
+- Only owners can share tasks
+- Shared users can only update task status
+- Invalid share attempts are handled with API errors (self-share, invalid user ID, already shared, unauthorized)
+
+Deliverables status:
+- Real-time notifications across users: Implemented
+- Task sharing: Implemented
+- Updated schema + APIs: Implemented
+- Code pushed to GitHub: Submit with your final repo link
+
+### Week 5 - Advanced Analytics & Reporting
+
+1. Analytics dashboard
+- Dashboard includes:
+- totals (total/completed/pending/overdue)
+- weekly/monthly completed vs overdue trends
+- status breakdown (Pending/In Progress/Completed)
+- UI charts are custom visual components bound to backend data
+
+2. Backend enhancements
+- Implemented endpoints:
+- `GET /api/analytics/overview`
+- `GET /api/analytics/trends?range=weekly|monthly`
+
+3. Frontend integration
+- Dashboard fetches dynamic backend data (`frontend/src/components/Dashboard.jsx`)
+- Range switcher supports weekly/monthly views
+
+4. Data optimization
+- MongoDB Aggregation Framework used in analytics controller (`backend/controllers/analyticsController.js`)
+- API returns compact summary and trend arrays for fast rendering
+
+Deliverables status:
+- Functional analytics dashboard: Implemented
+- Analytics endpoints: Implemented
+- Optimized queries: Implemented via aggregation
+- Dashboard screenshots to upload: `task-manager/docs/screenshots/`
+
+### Week 6 - Deployment, Documentation & Final Enhancements
+
+1. Deployment
+- Deployment configs included (`task-manager/render.yaml`, `task-manager/frontend/vercel.json`)
+- Recommended final target: one live URL where frontend and backend are both accessible
+
+2. Final enhancements
+- Dark mode toggle: Implemented
+- Task attachments: Implemented (uploaded to `backend/uploads`, served via `/uploads`)
+- Mobile responsiveness: Implemented with responsive layout classes and CSS
+
+3. Documentation
+- This README includes setup, API docs, feature mapping, and submission checklist
+
+4. Testing
+- End-to-end scenario checklist included below for final validation
+
+Deliverables status:
+- Live deployed URL: add before submission
+- Complete README: Implemented
+- Dark mode + attachments: Implemented
+- Video walkthrough: add before submission
 
 ## Tech Stack
 
+- Frontend: React (Vite), Axios, Socket.IO Client
+- Styling: Tailwind utility classes + custom CSS
 - Backend: Node.js, Express, MongoDB, Mongoose, JWT, Socket.IO
-- Frontend: React, Tailwind CSS, Axios, Recharts, Socket.IO Client
 
 ## Project Structure
 
-- `task-manager/backend`
-- `task-manager/frontend`
+```text
+task-manager/
+  backend/
+    controllers/
+    middleware/
+    models/
+    routes/
+    server.js
+    uploads/
+  frontend/
+    src/
+      components/
+      App.jsx
+      api.js
+      index.css
+  docs/
+    screenshots/
+    walkthrough/
+```
 
 ## Environment Variables
 
-Backend `.env` (inside `task-manager/backend`):
+Create `task-manager/backend/.env`:
 
 ```env
 MONGO_URI=your_mongodb_connection_string
-JWT_SECRET=your_secret
+JWT_SECRET=your_jwt_secret
 PORT=4000
 FRONTEND_URL=http://localhost:5173
 ```
 
-Frontend `.env` (inside `task-manager/frontend`, optional):
+Create `task-manager/frontend/.env`:
 
 ```env
 VITE_API_URL=http://localhost:4000/api
@@ -58,7 +147,7 @@ VITE_API_URL=http://localhost:4000/api
 
 ## Local Setup
 
-1. Backend
+Backend:
 
 ```bash
 cd task-manager/backend
@@ -66,7 +155,7 @@ npm install
 npm run dev
 ```
 
-2. Frontend
+Frontend:
 
 ```bash
 cd task-manager/frontend
@@ -74,31 +163,23 @@ npm install
 npm run dev
 ```
 
-Frontend runs on `http://localhost:5173` and backend on `http://localhost:4000` by default.
+Defaults:
+- Frontend: `http://localhost:5173`
+- Backend: `http://localhost:4000`
 
-## API Reference
+## API Documentation
 
 ### Auth
 
 - `POST /api/auth/register`
-  - Body:
-
-```json
-{
-  "name": "Ali",
-  "email": "ali@example.com",
-  "password": "123456"
-}
-```
-
 - `POST /api/auth/login`
-  - Body:
 
-```json
-{
-  "email": "ali@example.com",
-  "password": "123456"
-}
+Example:
+
+```bash
+curl -X POST http://localhost:4000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d "{\"email\":\"user@example.com\",\"password\":\"123456\"}"
 ```
 
 ### Tasks
@@ -108,24 +189,16 @@ Frontend runs on `http://localhost:5173` and backend on `http://localhost:4000` 
 - `GET /api/tasks/:id`
 - `POST /api/tasks`
 - `PUT /api/tasks/:id`
-- `DELETE /api/tasks/:id` (owner only)
-- `PUT /api/tasks/:id/share` (owner only)
+- `DELETE /api/tasks/:id`
+- `PUT /api/tasks/:id/share`
 
-Example create/update payload with attachment:
+Share example:
 
-```json
-{
-  "title": "Prepare sprint demo",
-  "description": "Slides and test run",
-  "status": "In Progress",
-  "dueDate": "2026-02-14",
-  "attachment": {
-    "fileName": "demo-plan.pdf",
-    "fileType": "application/pdf",
-    "size": 15230,
-    "contentBase64": "..."
-  }
-}
+```bash
+curl -X PUT http://localhost:4000/api/tasks/<TASK_ID>/share \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <TOKEN>" \
+  -d "{\"userId\":\"<RECIPIENT_USER_ID>\"}"
 ```
 
 ### Notifications
@@ -137,61 +210,43 @@ Example create/update payload with attachment:
 ### Analytics
 
 - `GET /api/analytics/overview`
-- `GET /api/analytics/trends?range=weekly`
-- `GET /api/analytics/trends?range=monthly`
+- `GET /api/analytics/trends?range=weekly|monthly`
 
-## Deployment (Single Live URL)
+Trend example:
 
-Recommended: Render (backend + static frontend in one service) or Render backend + Vercel frontend.
+```bash
+curl "http://localhost:4000/api/analytics/trends?range=weekly" \
+  -H "Authorization: Bearer <TOKEN>"
+```
 
-Option A (single service on Render):
+## End-to-End Testing Checklist
 
-1. Build frontend: `npm run build` inside `task-manager/frontend`
-2. Serve frontend build from backend (optional extension step)
-3. Deploy backend service and expose `/api/*` and static frontend route from same host
+- Register User A and User B
+- Login as User A and create task
+- Share task to User B
+- Confirm User B receives share notification
+- Login as User B and update task status
+- Confirm User A receives status-change notification
+- Open analytics and verify weekly/monthly trends
+- Verify dark mode toggle
+- Verify attachment upload and file access
+- Verify mobile layout behavior
 
-Option B (Vercel + Render):
+## Deployment Notes
 
-1. Deploy backend on Render
-2. Deploy frontend on Vercel
-3. Set `VITE_API_URL` to backend URL + `/api`
-4. Set backend `FRONTEND_URL` to Vercel domain
+- Option A: Render single service (backend serves frontend build in production)
+- Option B: Render backend + Vercel frontend (set correct CORS and `VITE_API_URL`)
 
-## End-to-End Checklist
+## Final Submission Checklist
 
-- Register two users
-- User A creates task and shares with User B
-- User B receives real-time share notification
-- User B updates task status
-- User A receives real-time status notification
-- Analytics dashboard updates with status/trends
-- Dark mode and attachments verified on desktop/mobile
+- GitHub repo link: `PASTE_REPO_LINK_HERE`
+- Live URL (single accessible link): `PASTE_LIVE_URL_HERE`
+- Video walkthrough URL: `PASTE_VIDEO_LINK_HERE`
+- Dashboard screenshots in `task-manager/docs/screenshots/`
 
-## Submission Checklist
+## Evaluation Criteria Alignment
 
-- GitHub repository updated
-- Live project URL
-- README with setup + API documentation
-- Dashboard screenshots
-- Video walkthrough
-
-## Submission Artifacts
-
-### Live Project URL
-
-- https://task-manager.onrender.com
-
-### Dashboard Screenshots
-
-- Add dashboard screenshots in `task-manager/docs/screenshots/`
-- Suggested file names:
-  - `dashboard-overview.png`
-  - `dashboard-trends-weekly.png`
-  - `dashboard-trends-monthly.png`
-  - `dashboard-mobile.png`
-
-### Video Walkthrough
-
-- Add walkthrough video link below:
-  - `PASTE_VIDEO_LINK_HERE`
-- Optional: keep notes/scripts in `task-manager/docs/walkthrough/README.md`
+- Feature implementation: covered (sharing, notifications, analytics, dark mode, attachments)
+- Performance: aggregation-based analytics + lightweight API responses + responsive UI
+- Documentation: this README plus structured codebase
+- Deployment: finalize with one live link before final submission
